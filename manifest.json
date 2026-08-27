@@ -1,0 +1,13 @@
+{
+  "name": "Email Slicer",
+ "id": "1674496940618273982",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "Runs entirely offline. Slicing and download happen in the plugin iframe."
+  }
+}

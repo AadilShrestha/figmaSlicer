@@ -1,0 +1,1091 @@
+<style>
+  :root {
+    --bg: var(--figma-color-bg, #ffffff);
+    --bg-2: var(--figma-color-bg-secondary, #f5f5f5);
+    --bg-hover: var(--figma-color-bg-hover, #f0f0f0);
+    --text: var(--figma-color-text, #1e1e1e);
+    --text-2: var(--figma-color-text-secondary, #7a7a7a);
+    --border: var(--figma-color-border, #e6e6e6);
+    --brand: var(--figma-color-bg-brand, #0d99ff);
+    --on-brand: var(--figma-color-text-onbrand, #ffffff);
+    --danger: var(--figma-color-text-danger, #d43b30);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; padding: 12px; overflow-y: auto;
+    background: var(--bg); color: var(--text);
+    font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11px; line-height: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; gap: 8px; align-items: flex-end; }
+  .row > .grow { flex: 1; min-width: 0; }
+
+  label { display: block; color: var(--text-2); margin-bottom: 4px; }
+
+  .eyebrow { display: flex; justify-content: space-between; align-items: baseline; color: var(--text-2); }
+  .eyebrow b { color: var(--text); font-weight: 600; }
+
+  .queue { max-height: 210px; overflow-y: auto; border: 1px solid var(--border); border-radius: 4px; }
+  .queue:empty { display: none; }
+
+  .item { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .item:last-child { border-bottom: 0; }
+  .item:hover { background: var(--bg-hover); }
+
+  /* Signature: a proportional column of the frame with the cuts drawn on it. */
+  .strip { position: relative; width: 12px; min-width: 12px; height: 38px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 1px; overflow: hidden; cursor: pointer; }
+  .cut { position: absolute; left: 0; right: 0; height: 1px; background: var(--brand); }
+  .live { position: absolute; left: 0; right: 0; height: 1px; background: var(--text-2); opacity: 0.7; }
+  .trim { position: absolute; left: 0; right: 0; background: var(--text-2); opacity: 0.35; }
+
+  .item-body { flex: 1; min-width: 0; cursor: pointer; }
+  .item-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-meta { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-count { color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .empty { padding: 20px 12px; text-align: center; color: var(--text-2); background: var(--bg-2); border-radius: 4px; }
+
+  select, input[type="number"], input[type="text"] {
+    width: 100%; height: 28px; padding: 0 8px;
+    color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    font-family: inherit; font-size: 11px;
+  }
+  .item input.item-input {
+    width: 46px; min-width: 46px; flex: 0 0 46px;
+    height: 24px; padding: 0 4px; text-align: center;
+  }
+  select:focus, input:focus { outline: 1px solid var(--brand); border-color: var(--brand); }
+  input[type="range"] { width: 100%; accent-color: var(--brand); }
+
+  hr { border: 0; border-top: 1px solid var(--border); margin: 2px 0; }
+
+  button {
+    width: 100%; height: 32px;
+    background: var(--brand); color: var(--on-brand);
+    border: 0; border-radius: 6px;
+    font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  button.ghost { height: 28px; background: transparent; color: var(--text-2); border: 1px solid var(--border); font-weight: 400; }
+  button.ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+  button.secondary { background: var(--bg-2); color: var(--text); border: 1px solid var(--border); }
+  button.secondary:hover:not(:disabled) { background: var(--bg-hover); }
+  button.armed { background: var(--danger); color: #fff; }
+
+  .panel { padding: 8px; background: var(--bg-2); border-radius: 4px; display: flex; flex-direction: column; gap: 8px; }
+  .hint { color: var(--text-2); }
+  .hint kbd { font-family: inherit; font-size: 10px; padding: 1px 4px; border: 1px solid var(--border); border-radius: 3px; background: var(--bg); }
+
+  .status { min-height: 16px; color: var(--text-2); text-align: center; }
+  .status.bad { color: var(--danger); }
+
+  .link { font-variant-numeric: tabular-nums; }
+  .link.ok { color: var(--brand); }
+  .link.stale { color: var(--danger); }
+
+  button.mini {
+    width: auto; height: 18px; padding: 0 6px; margin-left: 6px;
+    background: transparent; color: var(--text-2);
+    border: 1px solid var(--border); border-radius: 3px;
+    font-size: 10px; font-weight: 400;
+  }
+  button.mini:hover { background: var(--bg-hover); color: var(--text); }
+
+  .hidden { display: none; }
+</style>
+
+<div class="stack">
+  <div class="eyebrow">
+    <span id="queueLabel">Nothing selected</span>
+    <span>
+      <span id="linkState" class="link">connecting</span>
+      <button id="refresh" class="mini" title="Force a refresh">Refresh</button>
+    </span>
+  </div>
+  <div class="eyebrow"><span id="queueTotal"></span></div>
+
+  <div class="status" id="status"></div>
+  <div class="empty" id="empty">Select one or more email frames.</div>
+  <div class="queue" id="queue"></div>
+
+  <hr>
+
+  <div>
+    <label for="mode">Cut by</label>
+    <select id="mode">
+      <option value="pick">Clicked layers</option>
+      <option value="guides">Horizontal guides</option>
+      <option value="even">Equal parts</option>
+      <option value="height">Max slice height</option>
+    </select>
+  </div>
+
+  <div id="pickField" class="panel">
+    <button id="pickToggle" class="ghost">Start picking cuts</button>
+    <div>
+      <label for="anchor">Cut at the layer's</label>
+      <select id="anchor">
+        <option value="top">Top edge</option>
+        <option value="bottom">Bottom edge</option>
+        <option value="middle">Middle</option>
+      </select>
+    </div>
+    <div class="row">
+      <button id="undoPick" class="ghost" disabled>Undo last cut</button>
+      <button id="clearPicks" class="ghost" disabled>Clear all cuts</button>
+    </div>
+    <div class="hint">
+      Select your emails, then start picking.
+      <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>-click a layer inside an email to cut there.
+      Pan and zoom freely.
+    </div>
+  </div>
+
+  <div id="evenField" class="hidden">
+    <label for="count">Slices per email <span id="perFrameNote"></span></label>
+    <input type="number" id="count" min="1" max="60" step="1" value="6">
+  </div>
+
+  <div id="heightField" class="hidden">
+    <label for="maxHeight">Tallest slice (px, at 1x)</label>
+    <input type="number" id="maxHeight" min="40" max="4000" step="10" value="600">
+  </div>
+
+  <div class="row">
+    <div class="grow">
+      <label for="trimTop">Skip top (px)</label>
+      <input type="number" id="trimTop" min="0" step="10" value="0">
+    </div>
+    <div class="grow">
+      <label for="trimBottom">Skip bottom (px)</label>
+      <input type="number" id="trimBottom" min="0" step="10" value="0">
+    </div>
+  </div>
+
+  <div>
+    <label for="prefix">Slice name</label>
+    <input type="text" id="prefix" value="slice" maxlength="40" placeholder="slice">
+  </div>
+
+  <button id="run" disabled>Slice</button>
+
+  <hr>
+
+  <div class="eyebrow">
+    <span>Export</span>
+    <span id="exportSummary">nothing to export yet</span>
+  </div>
+
+  <div class="row">
+    <div class="grow">
+      <label for="format">Format</label>
+      <select id="format">
+        <option value="image/jpeg">JPG</option>
+        <option value="image/png">PNG</option>
+      </select>
+    </div>
+    <div class="grow">
+      <label for="scale">Export scale</label>
+      <select id="scale">
+        <option value="2">2x (retina)</option>
+        <option value="1">1x</option>
+        <option value="3">3x</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="qualityField">
+    <label for="quality">JPG quality <span id="qualityValue">85</span></label>
+    <input type="range" id="quality" min="40" max="100" step="5" value="85">
+  </div>
+
+  <div>
+    <label for="saveAs">Download as</label>
+    <select id="saveAs">
+      <option value="files">Separate image files</option>
+      <option value="archive">One ZIP archive</option>
+    </select>
+  </div>
+
+  <button id="export" class="secondary" disabled>Export slices</button>
+  <button id="clear" class="ghost">Remove slices on selected</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var selectedFrames = [];          // live snapshot from the canvas
+  var lockedFrames = null;  // frozen queue while picking
+  var picks = {};           // frameId -> [y, ...] in 1x frame pixels
+  var counts = {};          // frameId -> per-email slice count (equal parts)
+  var pickHistory = [];         // [{ frameId, y }] chronological, for undo
+  var picking = false;
+  var busy = false;
+  var pending = null;
+  var rows = {};            // frameId -> { node, strip, meta, count, input }
+  var queueKey = '';        // which frames the DOM was built for
+  var lastBeat = 0;         // when the plugin last answered
+  var saveTimer = null;
+
+  var SETTING_IDS = [
+    'mode', 'anchor', 'count', 'maxHeight', 'trimTop', 'trimBottom',
+    'prefix', 'format', 'scale', 'quality', 'saveAs'
+  ];
+
+  function el(id) { return document.getElementById(id); }
+  function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+  function num(id, fallback) {
+    var v = parseInt(el(id).value, 10);
+    return isNaN(v) ? fallback : v;
+  }
+  function activeFrames() { return lockedFrames || selectedFrames; }
+
+  function request(message, wantType) {
+    return new Promise(function (resolve, reject) {
+      pending = { wantType: wantType, resolve: resolve, reject: reject };
+      parent.postMessage({ pluginMessage: message }, '*');
+    });
+  }
+  function send(message) { parent.postMessage({ pluginMessage: message }, '*'); }
+
+  function settingsValues() {
+    var values = {};
+    SETTING_IDS.forEach(function (id) { values[id] = el(id).value; });
+    return values;
+  }
+
+  function saveSettingsSoon() {
+    if (saveTimer !== null) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      saveTimer = null;
+      send({ type: 'saveSettings', values: settingsValues() });
+    }, 150);
+  }
+
+  function applySettings(values) {
+    if (!values || typeof values !== 'object') return;
+    SETTING_IDS.forEach(function (id) {
+      if (values[id] == null) return;
+      var node = el(id);
+      var old = node.value;
+      var value = String(values[id]);
+
+      if (node.tagName === 'SELECT') {
+        node.value = value;
+        if (!node.value) node.value = old;
+      } else if (node.type === 'number' || node.type === 'range') {
+        var parsed = parseFloat(value);
+        if (isNaN(parsed)) return;
+        if (node.min !== '') parsed = Math.max(parseFloat(node.min), parsed);
+        if (node.max !== '') parsed = Math.min(parseFloat(node.max), parsed);
+        node.value = String(parsed);
+      } else {
+        node.value = value.slice(0, 40);
+      }
+    });
+    el('qualityValue').textContent = el('quality').value;
+    renderFields();
+    renderQueue();
+  }
+
+  /* ---------- cut math (1x frame pixels) ---------- */
+
+  // The slice-able span, after skipping the top and bottom offcuts. Anything
+  // outside gets no slice at all — that's the point of skipping a footer.
+  function region(frame) {
+    var top = clamp(num('trimTop', 0), 0, frame.height - 1);
+    var bottom = clamp(num('trimBottom', 0), 0, frame.height - 1);
+    var end = frame.height - bottom;
+    if (end - top < 1) return { start: 0, end: frame.height, invalid: true };
+    return { start: top, end: end, invalid: false };
+  }
+
+  function countFor(frame) {
+    var own = counts[frame.id];
+    return clamp(own == null ? num('count', 6) : own, 1, 60);
+  }
+
+  function pickedPoints(frame) {
+    if (Object.prototype.hasOwnProperty.call(picks, frame.id)) return picks[frame.id];
+    return (frame.slices || []).map(function (slice) { return slice.top; })
+      .filter(function (top) { return top > 0; });
+  }
+
+  function cutPoints(frame) {
+    var mode = el('mode').value;
+    var r = region(frame);
+    var span = r.end - r.start;
+    var points = [];
+    var i;
+
+    if (mode === 'even') {
+      var n = countFor(frame);
+      for (i = 1; i < n; i++) points.push(r.start + Math.round((span * i) / n));
+    } else if (mode === 'height') {
+      var max = clamp(num('maxHeight', 600), 40, 4000);
+      var parts = Math.ceil(span / max);
+      for (i = 1; i < parts; i++) points.push(r.start + Math.round((span * i) / parts));
+    } else if (mode === 'guides') {
+      points = frame.guides.slice();
+    } else {
+      points = pickedPoints(frame).slice();
+    }
+
+    var seen = {};
+    return points
+      .filter(function (y) { return y > r.start && y < r.end; })
+      .filter(function (y) { if (seen[y]) return false; seen[y] = true; return true; })
+      .sort(function (a, b) { return a - b; });
+  }
+
+  function bands(frame) {
+    var r = region(frame);
+    var edges = [r.start].concat(cutPoints(frame), [r.end]);
+    var out = [];
+    for (var i = 0; i < edges.length - 1; i++) {
+      if (edges[i + 1] - edges[i] >= 1) {
+        out.push({ top: edges[i], height: edges[i + 1] - edges[i] });
+      }
+    }
+    return out;
+  }
+
+  function prefixText() { return (el('prefix').value || 'slice').trim() || 'slice'; }
+  function fileSafe(name) { return name.replace(/[\/\\:*?"<>|]+/g, '-').trim() || 'slice'; }
+  function uniqueName(name, used) {
+    var candidate = name;
+    var suffix = 2;
+    while (used[candidate]) candidate = name + ' (' + (suffix++) + ')';
+    used[candidate] = true;
+    return candidate;
+  }
+
+  /* ---------- queue: build once, update in place ---------- */
+
+  function buildQueue(list) {
+    var queue = el('queue');
+    queue.innerHTML = '';
+    rows = {};
+
+    list.forEach(function (frame) {
+      var item = document.createElement('div');
+      item.className = 'item';
+
+      var strip = document.createElement('div');
+      strip.className = 'strip';
+      strip.title = 'Zoom to this frame';
+      strip.addEventListener('click', function () { send({ type: 'select', ids: [frame.id] }); });
+
+      var body = document.createElement('div');
+      body.className = 'item-body';
+      body.title = 'Zoom to this frame';
+      var name = document.createElement('div');
+      name.className = 'item-name';
+      name.textContent = frame.name;
+      var meta = document.createElement('div');
+      meta.className = 'item-meta';
+      body.appendChild(name);
+      body.appendChild(meta);
+      body.addEventListener('click', function () { send({ type: 'select', ids: [frame.id] }); });
+
+      // Per-email slice count, so one selection can cut each email differently.
+      var input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'item-input';
+      input.min = 1;
+      input.max = 60;
+      input.step = 1;
+      input.title = 'Slices for this email';
+      input.addEventListener('click', function (e) { e.stopPropagation(); });
+      input.addEventListener('input', function () {
+        var v = parseInt(input.value, 10);
+        if (!isNaN(v)) counts[frame.id] = clamp(v, 1, 60);
+        updateQueue();
+      });
+
+      var count = document.createElement('div');
+      count.className = 'item-count';
+
+      item.appendChild(strip);
+      item.appendChild(body);
+      item.appendChild(input);
+      item.appendChild(count);
+      queue.appendChild(item);
+
+      rows[frame.id] = { node: item, strip: strip, meta: meta, count: count, input: input };
+    });
+  }
+
+  function updateQueue() {
+    var list = activeFrames();
+    var mode = el('mode').value;
+    var total = 0, onCanvas = 0, missingGuides = 0, badTrim = 0;
+
+    // Totals are counted over every frame, never gated on its DOM row existing
+    // — otherwise a missing row silently drops that email from the count.
+    var missingRow = false;
+    list.forEach(function (frame) {
+      var cuts = bands(frame);
+      var r = region(frame);
+      total += cuts.length;
+      onCanvas += frame.onCanvas || 0;
+      if (r.invalid) badTrim++;
+      if (mode === 'guides' && !frame.guides.length) missingGuides++;
+      if (!rows[frame.id]) missingRow = true;
+    });
+
+    // Self-heal: rebuild the rows and come back rather than rendering a
+    // half-empty queue.
+    if (missingRow) {
+      queueKey = list.map(function (f) { return f.id; }).join(',');
+      buildQueue(list);
+    }
+
+    list.forEach(function (frame) {
+      var row = rows[frame.id];
+      if (!row) return;
+
+      var cuts = bands(frame);
+      var r = region(frame);
+
+      // Planned cuts in blue; slices already on the canvas as grey ticks, so
+      // you can see what Export would pick up versus what Slice would make.
+      row.strip.innerHTML = '';
+      if (r.start > 0) addTrim(row.strip, 0, r.start / frame.height);
+      if (r.end < frame.height) addTrim(row.strip, r.end / frame.height, (frame.height - r.end) / frame.height);
+      (frame.slices || []).forEach(function (slice) {
+        if (slice.top <= 0) return;
+        var tick = document.createElement('div');
+        tick.className = 'live';
+        tick.style.top = ((slice.top / frame.height) * 100) + '%';
+        row.strip.appendChild(tick);
+      });
+      cutPoints(frame).forEach(function (y) {
+        var line = document.createElement('div');
+        line.className = 'cut';
+        line.style.top = ((y / frame.height) * 100) + '%';
+        row.strip.appendChild(line);
+      });
+
+      var bits = [frame.width + ' × ' + frame.height];
+      if (mode === 'pick') bits.push(pickHistory.filter(function (pick) {
+        return pick.frameId === frame.id;
+      }).length + ' picked');
+      else if (mode === 'guides') bits.push(frame.guides.length + ' guides');
+      if (frame.onCanvas) bits.push(frame.onCanvas + ' on canvas');
+      row.meta.textContent = bits.join(' · ');
+
+      row.count.textContent = cuts.length === 1 ? '1 slice' : cuts.length + ' slices';
+
+      row.input.classList.toggle('hidden', mode !== 'even');
+      // Don't fight the user mid-keystroke.
+      if (document.activeElement !== row.input) row.input.value = countFor(frame);
+    });
+
+    el('empty').classList.toggle('hidden', list.length > 0);
+    el('queueLabel').textContent = list.length === 0
+      ? 'Nothing selected'
+      : (picking ? 'Picking · ' : '') + (list.length === 1 ? '1 frame' : list.length + ' frames');
+    el('queueTotal').innerHTML = list.length ? '<b>' + total + '</b> slices' : '';
+    el('perFrameNote').textContent = list.length > 1 ? '(override per email in the list)' : '';
+
+    el('run').disabled = busy || picking || list.length === 0 || total === 0 || badTrim > 0;
+    el('run').textContent = total
+      ? 'Slice into ' + total + (total === 1 ? ' piece' : ' pieces')
+      : 'Slice';
+
+    el('export').disabled = busy || picking || onCanvas === 0;
+    el('export').textContent = onCanvas
+      ? 'Export ' + onCanvas + (onCanvas === 1 ? ' slice' : ' slices')
+      : 'Export slices';
+    el('exportSummary').innerHTML = onCanvas
+      ? '<b>' + onCanvas + '</b> on canvas'
+      : 'nothing to export yet';
+
+    el('clear').disabled = busy || list.length === 0;
+    el('undoPick').disabled = busy || !pickHistory.length;
+    el('clearPicks').disabled = busy || !pickHistory.length;
+
+    if (!busy && !picking) {
+      if (badTrim) {
+        setStatus('Skip values leave nothing to slice on ' + badTrim + ' frame(s).', true);
+      } else if (missingGuides) {
+        setStatus(missingGuides + ' frame' + (missingGuides > 1 ? 's have' : ' has') +
+          ' no horizontal guides — those stay whole.', true);
+      }
+    }
+  }
+
+  function addTrim(strip, topFraction, heightFraction) {
+    var band = document.createElement('div');
+    band.className = 'trim';
+    band.style.top = (topFraction * 100) + '%';
+    band.style.height = (heightFraction * 100) + '%';
+    strip.appendChild(band);
+  }
+
+  function renderQueue() {
+    var list = activeFrames();
+    var key = list.map(function (f) { return f.id; }).join(',');
+    if (key !== queueKey) {
+      queueKey = key;
+      buildQueue(list);
+    }
+    updateQueue();
+  }
+
+  function renderFields() {
+    var mode = el('mode').value;
+    el('pickField').classList.toggle('hidden', mode !== 'pick');
+    el('evenField').classList.toggle('hidden', mode !== 'even');
+    el('heightField').classList.toggle('hidden', mode !== 'height');
+    el('qualityField').classList.toggle('hidden', el('format').value === 'image/png');
+  }
+
+  // Shows whether the panel and the plugin are actually talking. Silence used
+  // to be indistinguishable from "nothing changed", which hid the real fault.
+  function renderLink() {
+    var node = el('linkState');
+    if (!lastBeat) { node.textContent = 'connecting'; node.className = 'link'; return; }
+    var age = Date.now() - lastBeat;
+    if (age < 1500) { node.textContent = 'live'; node.className = 'link ok'; }
+    else { node.textContent = 'stale ' + Math.round(age / 1000) + 's'; node.className = 'link stale'; }
+  }
+
+  function setStatus(text, bad) {
+    var node = el('status');
+    node.textContent = text;
+    node.className = 'status' + (bad ? ' bad' : '');
+  }
+
+  /* ---------- pick mode ---------- */
+
+  function startPicking() {
+    if (!selectedFrames.length) { setStatus('Select your email frames first.', true); return; }
+    lockedFrames = selectedFrames.slice();
+    picking = true;
+    el('pickToggle').textContent = 'Done picking';
+    el('pickToggle').classList.add('armed');
+    setStatus('Cmd/Ctrl-click layers inside your emails to add cuts.');
+    send({ type: 'startPicking', ids: lockedFrames.map(function (f) { return f.id; }) });
+    renderQueue();
+  }
+
+  function stopPicking() {
+    picking = false;
+    lockedFrames = null;
+    el('pickToggle').textContent = 'Start picking cuts';
+    el('pickToggle').classList.remove('armed');
+    setStatus('');
+    send({ type: 'stopPicking' });
+  }
+
+  // Emails sit side by side and share a Y range, so the owning frame is decided
+  // by ancestry first. Only if the clicked layer has no locked ancestor does it
+  // fall back to geometry — and then the horizontal span matters too.
+  function ownerOf(picked, list) {
+    var i;
+    if (picked.ownerId) {
+      for (i = 0; i < list.length; i++) {
+        if (list[i].id === picked.ownerId) return list[i];
+      }
+    }
+    for (i = 0; i < list.length; i++) {
+      var f = list[i];
+      if (picked.centerX >= f.absX && picked.centerX <= f.absX + f.width &&
+          picked.centerY >= f.absY && picked.centerY <= f.absY + f.height) {
+        return f;
+      }
+    }
+    return null;
+  }
+
+  function labelFor(frame, list) {
+    // Emails are often all called the same thing, so say which one.
+    var index = list.indexOf(frame) + 1;
+    var duplicate = list.filter(function (f) { return f.name === frame.name; }).length > 1;
+    return duplicate ? frame.name + ' #' + index : frame.name;
+  }
+
+  function addPick(picked) {
+    var list = lockedFrames || [];
+    var frame = ownerOf(picked, list);
+
+    if (!frame) {
+      setStatus('"' + picked.name + '" is not inside any selected email.', true);
+      return;
+    }
+
+    var y = Math.round(picked[el('anchor').value] - frame.absY);
+    var where = labelFor(frame, list);
+
+    if (y <= 0 || y >= frame.height) {
+      setStatus('That edge falls outside ' + where + '. Try another layer.', true);
+      return;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(picks, frame.id)) {
+      picks[frame.id] = pickedPoints(frame).slice();
+    }
+    if (picks[frame.id].indexOf(y) !== -1) {
+      setStatus('Already a cut at ' + y + 'px on ' + where + '.');
+      return;
+    }
+
+    picks[frame.id].push(y);
+    pickHistory.push({ frameId: frame.id, y: y });
+    var pickedHere = pickHistory.filter(function (pick) { return pick.frameId === frame.id; }).length;
+    setStatus('Cut at ' + y + 'px on ' + where + ' \u00b7 ' +
+      pickedHere + ' on this email, ' + pickHistory.length + ' total.');
+    updateQueue();
+  }
+
+  function undoPick() {
+    var last = pickHistory.pop();
+    if (!last) return;
+    var arr = picks[last.frameId] || [];
+    var at = arr.indexOf(last.y);
+    if (at !== -1) arr.splice(at, 1);
+
+    var list = lockedFrames || selectedFrames;
+    var frame = null;
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].id === last.frameId) { frame = list[i]; break; }
+    }
+    setStatus('Removed cut at ' + last.y + 'px' +
+      (frame ? ' on ' + labelFor(frame, list) : '') + '.');
+    updateQueue();
+  }
+
+  function clearPicks() {
+    activeFrames().forEach(function (frame) { picks[frame.id] = []; });
+    pickHistory = [];
+    setStatus('All picked cuts cleared.');
+    updateQueue();
+  }
+
+  /* ---------- image helpers ---------- */
+
+  function toBlob(canvas, type, quality) {
+    return new Promise(function (resolve, reject) {
+      canvas.toBlob(function (blob) {
+        if (blob) resolve(blob); else reject(new Error('Could not encode slice.'));
+      }, type, quality);
+    });
+  }
+
+  function save(blob, filename) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 20000);
+  }
+
+  function pause(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ---------- ZIP (stored, no compression) ----------
+     JPG and PNG are already compressed, so deflate would buy almost nothing.
+     Storing keeps this dependency-free — JSZip needs a bundler, and this
+     plugin is meant to run as plain files with no build step. */
+
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(buf) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function buildZip(files) {
+    var parts = [], central = [], offset = 0;
+    var now = new Date();
+    var time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+    var date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+    var enc = new TextEncoder();
+
+    files.forEach(function (f) {
+      var nameBytes = enc.encode(f.name);
+      var crc = crc32(f.bytes);
+      var size = f.bytes.length;
+
+      var local = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);   // UTF-8 filenames
+      dv.setUint16(8, 0, true);        // stored
+      dv.setUint16(10, time, true);
+      dv.setUint16(12, date, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, size, true);
+      dv.setUint32(22, size, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      parts.push(local, f.bytes);
+
+      var cd = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cd.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, time, true);
+      cv.setUint16(14, date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+
+      offset += local.length + size;
+    });
+
+    var centralSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+
+  async function decode(bytes) {
+    var blob = new Blob([bytes], { type: 'image/png' });
+    if (typeof createImageBitmap === 'function') return await createImageBitmap(blob);
+    return await new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('Decode failed.')); };
+      img.src = url;
+    });
+  }
+
+  async function reencode(bytes, format, quality) {
+    if (format === 'image/png') return new Blob([bytes], { type: 'image/png' });
+
+    var source = await decode(bytes);
+    var canvas = document.createElement('canvas');
+    canvas.width = source.width;
+    canvas.height = source.height;
+    var ctx = canvas.getContext('2d');
+    // JPG has no alpha — paint white so transparent areas don't go black.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(source, 0, 0);
+    if (typeof source.close === 'function') source.close();
+    return await toBlob(canvas, format, quality);
+  }
+
+  /* ---------- slice ---------- */
+
+  async function run() {
+    var queued = activeFrames().slice();
+    if (busy || picking || !queued.length) return;
+    for (var invalid = 0; invalid < queued.length; invalid++) {
+      if (region(queued[invalid]).invalid) {
+        setStatus('Skip values leave nothing to slice on one or more frames.', true);
+        return;
+      }
+    }
+    busy = true;
+    updateQueue();
+
+    var total = 0;
+    try {
+      // Numbering continues from the slices already on the canvas. This frame's
+      // old markers go first so they don't inflate the count.
+      var prepared = await request({
+        type: 'prepare',
+        ids: queued.map(function (f) { return f.id; })
+      }, 'prepared');
+
+      var next = prepared.count + 1;
+      var first = next;
+      var base = prefixText();
+      var scale = parseFloat(el('scale').value);
+      var format = el('format').value;
+
+      for (var i = 0; i < queued.length; i++) {
+        var frame = queued[i];
+        var list = bands(frame);
+        var names = list.map(function () { return base + ' ' + (next++); });
+
+        setStatus(queued.length > 1
+          ? 'Slicing ' + (i + 1) + ' of ' + queued.length + '\u2026'
+          : 'Slicing\u2026');
+
+        await request({
+          type: 'mark',
+          nodeId: frame.id,
+          scale: scale,
+          format: format,
+          bands: list.map(function (band, n) {
+            return { top: band.top, height: band.height, name: names[n] };
+          })
+        }, 'marked');
+
+        total += list.length;
+      }
+
+      setStatus(total + (total === 1 ? ' slice' : ' slices') + ' \u2014 ' +
+        base + ' ' + first + ' to ' + base + ' ' + (next - 1) +
+        '. Adjust them, then export.');
+    } catch (err) {
+      setStatus(err && err.message ? err.message : 'Something went wrong.', true);
+    } finally {
+      busy = false;
+      pending = null;
+      send({ type: 'endJob' });
+    }
+  }
+
+  /* ---------- export ---------- */
+
+  async function exportSlices() {
+    var queued = activeFrames().slice();
+    if (busy || picking || !queued.length) return;
+    busy = true;
+    updateQueue();
+
+    try {
+      // Ask the canvas what is actually there. Nothing is recomputed, so manual
+      // moves, resizes, renames and hand-drawn slices all come along.
+      var listing = await request({
+        type: 'listSlices',
+        ids: queued.map(function (f) { return f.id; })
+      }, 'sliceList');
+
+      var scale = parseFloat(el('scale').value);
+      var format = el('format').value;
+      var quality = parseInt(el('quality').value, 10) / 100;
+      var ext = format === 'image/png' ? 'png' : 'jpg';
+      var asZip = el('saveAs').value === 'archive';
+      var manyFrames = listing.frames.length > 1;
+
+      var queue = [];
+      var folders = {};
+      var usedFolders = Object.create(null);
+      listing.frames.forEach(function (frame) {
+        var folder = uniqueName(fileSafe(frame.name), usedFolders);
+        folders[frame.id] = folder;
+        frame.slices.forEach(function (slice) {
+          queue.push({ id: slice.id, name: slice.name, frameId: frame.id });
+        });
+      });
+
+      if (!queue.length) {
+        setStatus('No slices on those frames yet. Hit Slice first.', true);
+        return;
+      }
+
+      var used = Object.create(null);
+      var bundle = [];
+
+      for (var i = 0; i < queue.length; i++) {
+        var job = queue[i];
+        setStatus('Rendering ' + (i + 1) + ' of ' + queue.length + '\u2026');
+
+        var shot = await request({ type: 'exportSlice', nodeId: job.id, scale: scale }, 'sliceImage');
+        var blob = await reencode(shot.bytes, format, quality);
+
+        // Names can collide once you start renaming slices by hand.
+        var stem = fileSafe(job.name);
+        // In a ZIP with several emails, foldering keeps them apart.
+        var path = uniqueName((asZip && manyFrames ? folders[job.frameId] + '/' : '') + stem, used);
+        var filename = path + '.' + ext;
+
+        if (asZip) {
+          bundle.push({ name: filename, bytes: new Uint8Array(await blob.arrayBuffer()) });
+        } else {
+          save(blob, filename);
+          // Browsers throttle rapid consecutive downloads. Give each one room.
+          await pause(280);
+        }
+      }
+
+      if (asZip) {
+        setStatus('Packing ' + bundle.length + ' files\u2026');
+        var zipName = fileSafe(manyFrames ? prefixText() + 's' : listing.frames[0].name) + '.zip';
+        save(buildZip(bundle), zipName);
+        var mb = bundle.reduce(function (a, f) { return a + f.bytes.length; }, 0) / 1048576;
+        setStatus(zipName + ' \u2014 ' + bundle.length + ' files, ' + mb.toFixed(1) + ' MB. One save prompt.');
+      } else {
+        setStatus(queue.length + (queue.length === 1 ? ' file' : ' files') + ' saved.');
+      }
+    } catch (err) {
+      setStatus(err && err.message ? err.message : 'Export failed.', true);
+    } finally {
+      busy = false;
+      pending = null;
+      send({ type: 'endJob' });
+    }
+  }
+
+
+
+  async function clearMarkers() {
+    var queued = activeFrames().slice();
+    if (busy || !queued.length) {
+      setStatus('Select the emails you want to clear.', true);
+      return;
+    }
+    busy = true;
+    updateQueue();
+    try {
+      var result = await request({
+        type: 'clear',
+        ids: queued.map(function (f) { return f.id; })
+      }, 'cleared');
+      setStatus(result.count
+        ? 'Removed ' + result.count + ' slice' + (result.count === 1 ? '' : 's') +
+          ' from ' + queued.length + (queued.length === 1 ? ' email.' : ' emails.')
+        : 'No plugin slices on the selected emails.');
+    } catch (err) {
+      setStatus(err && err.message ? err.message : 'Could not remove slices.', true);
+    } finally {
+      busy = false;
+      pending = null;
+      send({ type: 'refresh' });
+    }
+  }
+
+  /* ---------- events ---------- */
+
+  ['mode', 'maxHeight', 'scale', 'format', 'trimTop', 'trimBottom', 'anchor', 'prefix']
+    .forEach(function (id) {
+      el(id).addEventListener('input', function () {
+        renderFields();
+        updateQueue();
+        saveSettingsSoon();
+      });
+    });
+
+  // Changing the global count resets every per-email override.
+  el('count').addEventListener('input', function () {
+    counts = {};
+    updateQueue();
+    saveSettingsSoon();
+  });
+
+  el('quality').addEventListener('input', function () {
+    el('qualityValue').textContent = el('quality').value;
+    saveSettingsSoon();
+  });
+
+  el('refresh').addEventListener('click', function () {
+    send({ type: 'refresh' });
+    send({ type: 'diagnose' });
+  });
+  el('saveAs').addEventListener('change', function () {
+    updateQueue();
+    saveSettingsSoon();
+  });
+  el('run').addEventListener('click', run);
+  el('export').addEventListener('click', exportSlices);
+  el('clear').addEventListener('click', clearMarkers);
+  el('pickToggle').addEventListener('click', function () {
+    if (picking) stopPicking(); else startPicking();
+  });
+  el('undoPick').addEventListener('click', undoPick);
+  el('clearPicks').addEventListener('click', clearPicks);
+
+  window.onmessage = function (event) {
+    var msg = event.data.pluginMessage;
+    if (!msg) return;
+
+    lastBeat = Date.now();
+
+    if (msg.type === 'pong') { renderLink(); return; }
+
+    if (msg.type === 'settings') { applySettings(msg.values); return; }
+
+    if (msg.type === 'selection') {
+      selectedFrames = msg.nodes || [];
+      var live = {};
+      selectedFrames.forEach(function (f) { live[f.id] = true; });
+      pickHistory = pickHistory.filter(function (h) { return live[h.frameId]; });
+      if (!picking) renderQueue();
+      return;
+    }
+
+    if (msg.type === 'pick') { addPick(msg.node); return; }
+    if (msg.type === 'pickHint') { setStatus(msg.message, true); return; }
+
+    if (msg.type === 'diagnosis') {
+      setStatus('sel ' + msg.selection + ' \u00b7 frames ' + msg.targets +
+        ' · slices ' + msg.slicesOnPage +
+        ' · nodechange ' + (msg.nodechange ? 'on' : 'OFF') +
+        ' · timers ' + (msg.timers ? 'on' : 'OFF'), !msg.nodechange);
+      return;
+    }
+
+    // Errors must be shown whether or not something is awaiting a reply.
+    // Gating them behind `pending` is what made every failure invisible.
+    if (msg.type === 'error') {
+      if (pending) {
+        var failed = pending;
+        pending = null;
+        failed.reject(new Error(msg.message));
+      } else {
+        setStatus(msg.message, true);
+      }
+      return;
+    }
+
+    if (!pending) return;
+    var waiting = pending;
+    if (msg.type === waiting.wantType) {
+      pending = null;
+      waiting.resolve(msg);
+    }
+  };
+
+  // The iframe timer keeps the link status honest. The main thread answers with
+  // a cheap pong when nodechange is active, or polls the canvas as a fallback.
+  setInterval(function () {
+    renderLink();
+    if (busy) return;
+    send({ type: 'poll' });
+  }, 400);
+
+  renderFields();
+  renderQueue();
+  setTimeout(function () { send({ type: 'ready' }); }, 0);
+})();
+</script>
