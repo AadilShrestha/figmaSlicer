@@ -290,51 +290,20 @@ async function resolve(id) {
 
 /* ---------- creating slices ---------- */
 
-// Auto-layout frames reflow their children, so probe with a throwaway slice
-// rather than guessing whether one can hold an absolute position.
-function canNest(node) {
-  if (typeof node.appendChild !== 'function') return false;
-  if (!('layoutMode' in node) || node.layoutMode === 'NONE') return true;
-
-  var probe = figma.createSlice();
-  try {
-    node.appendChild(probe);
-    probe.layoutPositioning = 'ABSOLUTE';
-    probe.resize(10, 10);
-    probe.x = 0;
-    probe.y = 10;
-    var held = Math.abs(probe.y - 10) < 0.5;
-    probe.remove();
-    return held;
-  } catch (err) {
-    try { probe.remove(); } catch (ignored) {}
-    return false;
-  }
-}
-
 async function markSlices(id, bands, scale, format) {
   var node = await resolve(id);
-  var nested = canNest(node);
   var box = node.absoluteBoundingBox;
 
   for (var i = 0; i < bands.length; i++) {
     var band = bands[i];
     var slice = figma.createSlice();
 
-    if (nested) {
-      node.appendChild(slice);
-      if ('layoutMode' in node && node.layoutMode !== 'NONE') {
-        try { slice.layoutPositioning = 'ABSOLUTE'; } catch (ignored) {}
-      }
-      slice.resize(node.width, band.height);
-      slice.x = 0;
-      slice.y = band.top;
-    } else {
-      figma.currentPage.appendChild(slice);
-      slice.resize(node.width, band.height);
-      slice.x = box.x;
-      slice.y = box.y + band.top;
-    }
+    // Keep slices at the page level, matching Figma's createSlice() default.
+    // Nested export targets can make Figma's native exporter package one JPEG
+    // as a document-level ZIP.
+    slice.resize(node.width, band.height);
+    slice.x = box.x;
+    slice.y = box.y + band.top;
 
     slice.name = band.name;
     slice.setPluginData(TAG, '1');

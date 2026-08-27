@@ -135,12 +135,12 @@ which Figma's export panel doesn't offer.
 
 ### Save as
 
-- **Separate image files** (default) — one JPG or PNG download per slice,
-  staggered ~280ms apart because browsers throttle rapid downloads.
-- **One ZIP archive** — a single save prompt no matter how many slices.
+- **One ZIP file** (default) — a single save prompt no matter how many slices.
   13 emails at 6 slices each is 78 separate save dialogs otherwise; this is one.
   With several emails selected, each gets its own folder inside the ZIP, so two
   emails can both contain a `slice 1` without clashing.
+- **Separate files** — one download per slice, staggered ~280ms apart because
+  browsers throttle rapid consecutive downloads.
 
 The ZIP is written directly by the plugin using the stored (uncompressed)
 method. JPG and PNG are already compressed, so deflate would save almost
@@ -216,10 +216,9 @@ near-instant. The time is all in rendering.
   hurts — Gmail clips messages over 102KB of HTML.
 - **The queue shows a live count** per frame, e.g. `600 × 3200 · 4 guides ·
   5 on canvas`, so you always know what Export will pick up.
-- **Auto-layout frames**: auto layout reflows its children, so the plugin probes
-  whether a slice can hold an absolute position. If it can't, slices are placed
-  on the page directly over the frame. They look and export identically; they
-  just won't follow if you drag the frame. Re-run after moving it.
+- **Moving frames**: slices stay at page level so Figma's native Export button
+  saves one selected slice as an image instead of wrapping nested exports in a
+  ZIP. They won't follow if you drag the frame; re-run Slice after moving it.
 - **JPG has no transparency.** Transparent areas fill white rather than going
   black.
 - **The first run may ask permission** to download multiple files. Allow it —

@@ -29,7 +29,10 @@ function loadPlugin(options = {}) {
       async setAsync(key, value) { storage[key] = value; }
     },
     getNodeByIdAsync: async (id) => nodes[id] || null,
-    createSlice() { throw new Error('Unexpected slice creation'); }
+    createSlice() {
+      if (options.createSlice) return options.createSlice();
+      throw new Error('Unexpected slice creation');
+    }
   };
   const context = { __html__: '', figma, setInterval() {}, setTimeout };
   vm.runInNewContext(fs.readFileSync('code.js', 'utf8'), context);
@@ -197,12 +200,27 @@ test('pick mode falls back to existing canvas slice boundaries', () => {
   assert.deepEqual(Array.from(context.result), []);
 });
 
-test('image files are the default export and legacy zip settings migrate away', () => {
-  const source = fs.readFileSync('ui.html', 'utf8');
-  const select = source.match(/<select id="saveAs">([\s\S]*?)<\/select>/);
-  assert.ok(select, 'saveAs select is missing');
-  assert.match(select[1], /^\s*<option value="files">/);
-  assert.match(select[1], /<option value="archive">/);
-  assert.doesNotMatch(select[1], /<option value="zip">/);
-  assert.match(source, /el\('saveAs'\)\.value === 'archive'/);
+test('mark keeps slices at page level for native single-file export', async () => {
+  const nested = [];
+  const frame = {
+    id: 'frame', width: 600, height: 1000,
+    absoluteBoundingBox: { x: 100, y: 200, width: 600, height: 1000 },
+    appendChild(node) { nested.push(node); }
+  };
+  const slice = {
+    resize(width, height) { this.width = width; this.height = height; },
+    setPluginData() {}
+  };
+  const plugin = loadPlugin({ nodes: { frame }, createSlice: () => slice });
+
+  await plugin.figma.ui.onmessage({
+    type: 'mark', nodeId: 'frame', scale: 2, format: 'image/jpeg',
+    bands: [{ top: 250, height: 300, name: 'slice 1' }]
+  });
+
+  assert.equal(nested.length, 0);
+  assert.equal(slice.x, 100);
+  assert.equal(slice.y, 450);
+  assert.equal(slice.width, 600);
+  assert.equal(slice.height, 300);
 });

@@ -207,10 +207,10 @@
   </div>
 
   <div>
-    <label for="saveAs">Download as</label>
+    <label for="saveAs">Save as</label>
     <select id="saveAs">
-      <option value="files">Separate image files</option>
-      <option value="archive">One ZIP archive</option>
+      <option value="zip">One ZIP file</option>
+      <option value="files">Separate files</option>
     </select>
   </div>
 
@@ -895,7 +895,7 @@
       var format = el('format').value;
       var quality = parseInt(el('quality').value, 10) / 100;
       var ext = format === 'image/png' ? 'png' : 'jpg';
-      var asZip = el('saveAs').value === 'archive';
+      var asZip = el('saveAs').value === 'zip';
       var manyFrames = listing.frames.length > 1;
 
       var queue = [];
