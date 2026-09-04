@@ -224,3 +224,22 @@ test('mark keeps slices at page level for native single-file export', async () =
   assert.equal(slice.width, 600);
   assert.equal(slice.height, 300);
 });
+
+test('each Download next click saves exactly one prepared file', () => {
+  const source = fs.readFileSync('ui.html', 'utf8');
+  const match = source.match(/  function downloadNext\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(match, 'downloadNext helper is missing');
+  assert.match(source, /el\('downloadNext'\)\.addEventListener\('click', downloadNext\);/);
+
+  const saved = [];
+  const context = {
+    downloads: [{ blob: 'one', filename: 'one.jpg' }, { blob: 'two', filename: 'two.jpg' }],
+    save(blob, filename) { saved.push({ blob, filename }); },
+    updateDownloadButton() {},
+    setStatus() {}
+  };
+  vm.runInNewContext(`${match[0]}\ndownloadNext();`, context);
+
+  assert.deepEqual(saved, [{ blob: 'one', filename: 'one.jpg' }]);
+  assert.equal(context.downloads.length, 1);
+});

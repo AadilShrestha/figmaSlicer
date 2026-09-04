@@ -2,10 +2,12 @@
 
 A Figma plugin that cuts email frames into slices. It drops real Figma
 slice nodes onto your design — the same objects you get by pressing `S` — and
-can export the cut regions as separate image files.
+exports the cut regions as images.
 
-Works across as many frames as you select at once. No zip, no account, no
-subscription. Runs offline.
+Works across as many frames as you select at once. No ZIP, account, or
+subscription needed. Runs offline.
+
+Report bugs or request changes in [GitHub Issues](https://github.com/AadilShrestha/figmaSlicer/issues/new).
 
 ## Install
 
@@ -22,7 +24,7 @@ It now lives under **Plugins → Development → Email Slicer**, permanently.
 ## Remembered settings
 
 Cut mode, cut edge, slice count and height, skips, slice name, format, scale,
-quality, and save mode are remembered when the plugin or Figma restarts. Figma
+and quality are remembered when the plugin or Figma restarts. Figma
 stores them locally for this plugin ID. They do not sync to another device and
 can disappear if local browser/cache data is cleared or the plugin ID changes.
 
@@ -133,19 +135,16 @@ Each slice exports through its own node, so it renders exactly what sits beneath
 it — the same result as Figma's export panel. JPG quality is applied afterwards,
 which Figma's export panel doesn't offer.
 
-### Save as
+### Downloads
 
-- **One ZIP file** (default) — a single save prompt no matter how many slices.
-  13 emails at 6 slices each is 78 separate save dialogs otherwise; this is one.
-  With several emails selected, each gets its own folder inside the ZIP, so two
-  emails can both contain a `slice 1` without clashing.
-- **Separate files** — one download per slice, staggered ~280ms apart because
-  browsers throttle rapid consecutive downloads.
+One slice downloads immediately. For multiple slices, the plugin renders them
+first and shows **Download next**. Each click downloads exactly one image, so
+Figma web treats it as a user-authorized download instead of blocking files
+after the first.
 
-The ZIP is written directly by the plugin using the stored (uncompressed)
-method. JPG and PNG are already compressed, so deflate would save almost
-nothing, and this avoids JSZip — which needs a bundler, while this plugin is
-deliberately plain files with no build step.
+Turn off the browser's **Ask where to save each file before downloading**
+setting to send each click straight to Downloads. That setting only removes
+the location prompt; it does not grant permission for automatic multi-downloads.
 
 If two slices end up with the same name, the second gets a `(2)` suffix.
 
@@ -205,8 +204,7 @@ Twenty seconds for a long email at 2x is normal. If you want it faster:
 - Use fewer, taller slices.
 - Export **PNG**, which skips the re-encode step, though the files are bigger.
 
-The ZIP itself is not the slow part — it's stored, not compressed, so packing is
-near-instant. The time is all in rendering.
+The time is all in rendering.
 
 ## Notes
 
@@ -221,8 +219,8 @@ near-instant. The time is all in rendering.
   ZIP. They won't follow if you drag the frame; re-run Slice after moving it.
 - **JPG has no transparency.** Transparent areas fill white rather than going
   black.
-- **The first run may ask permission** to download multiple files. Allow it —
-  downloads are staggered ~280ms apart for that reason.
+- **Automatic multi-downloads are a separate browser permission.** The plugin
+  avoids needing it by downloading one prepared image per explicit click.
 
 ## Files
 
@@ -230,7 +228,7 @@ near-instant. The time is all in rendering.
 | --- | --- |
 | `manifest.json` | Tells Figma what to load |
 | `code.js` | Selection, pick mode, creating slices, exporting slices |
-| `ui.html` | The panel: queue, previews, cut math, encoding, ZIP, downloads |
+| `ui.html` | The panel: queue, previews, cut math, encoding, downloads |
 | `plugin.test.js` | Dependency-free regression checks (`node --test plugin.test.js`) |
 | `README.md` | This |
 
@@ -257,8 +255,8 @@ Keep new state inside the IIFE.
 - **Live updates** are `snapshot()` / `signatureOf()` / `watchPage()` in
   `code.js`. Selection updates are event-driven; the panel heartbeat is the
   fallback only when `nodechange` is unavailable.
-- **The ZIP writer** is `buildZip()` in `ui.html` — about 60 lines, stored
-  entries, UTF-8 names, verified against `python zipfile` and `unzip`.
+- **Prepared downloads** live in `downloads` in `ui.html`; `downloadNext()`
+  consumes one per user click.
 - **The queue DOM** is built once per selection and updated in place, so live
   refreshes never steal focus from a number box you're typing in.
 - **Slice markers** are `markSlices()` in `code.js`. Plugin-made slices carry
