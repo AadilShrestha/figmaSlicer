@@ -4,8 +4,8 @@ A Figma plugin that cuts email frames into slices. It drops real Figma
 slice nodes onto your design — the same objects you get by pressing `S` — and
 exports the cut regions as images.
 
-Works across as many frames as you select at once. No ZIP, account, or
-subscription needed. Runs offline.
+Works across as many frames as you select at once. Download separately or as
+one ZIP; no account or subscription needed. Runs offline.
 
 Report bugs or request changes in [GitHub Issues](https://github.com/AadilShrestha/figmaSlicer/issues/new).
 
@@ -140,7 +140,7 @@ which Figma's export panel doesn't offer.
 One slice downloads immediately. For multiple slices, the plugin renders them
 first and shows **Download next**. Each click downloads exactly one image, so
 Figma web treats it as a user-authorized download instead of blocking files
-after the first.
+after the first. **Download all as ZIP** remains available beside it.
 
 Turn off the browser's **Ask where to save each file before downloading**
 setting to send each click straight to Downloads. That setting only removes
@@ -228,7 +228,7 @@ The time is all in rendering.
 | --- | --- |
 | `manifest.json` | Tells Figma what to load |
 | `code.js` | Selection, pick mode, creating slices, exporting slices |
-| `ui.html` | The panel: queue, previews, cut math, encoding, downloads |
+| `ui.html` | The panel: queue, previews, cut math, encoding, ZIP, downloads |
 | `plugin.test.js` | Dependency-free regression checks (`node --test plugin.test.js`) |
 | `README.md` | This |
 
@@ -257,6 +257,8 @@ Keep new state inside the IIFE.
   fallback only when `nodechange` is unavailable.
 - **Prepared downloads** live in `downloads` in `ui.html`; `downloadNext()`
   consumes one per user click.
+- **The optional ZIP** reuses `buildZip()` and does not consume the prepared
+  separate files.
 - **The queue DOM** is built once per selection and updated in place, so live
   refreshes never steal focus from a number box you're typing in.
 - **Slice markers** are `markSlices()` in `code.js`. Plugin-made slices carry

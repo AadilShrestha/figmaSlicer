@@ -219,6 +219,7 @@
   <div id="downloads" class="panel hidden">
     <div class="hint" id="downloadSummary"></div>
     <button id="downloadNext" class="secondary">Download next</button>
+    <button id="downloadZip" class="ghost">Download all as ZIP</button>
     <div class="hint">For separate files without ZIP prompts, turn off browser Settings → Downloads → “Ask where to save each file.”</div>
   </div>
   <button id="clear" class="ghost">Remove slices on selected</button>
@@ -241,6 +242,9 @@
   var lastBeat = 0;         // when the plugin last answered
   var saveTimer = null;
   var downloads = [];
+  var downloadIndex = 0;
+  var packingZip = false;
+  var zipName = 'slices.zip';
 
   var SETTING_IDS = [
     'mode', 'anchor', 'count', 'maxHeight', 'trimTop', 'trimBottom',
@@ -701,18 +705,122 @@
   }
 
   function updateDownloadButton() {
-    var count = downloads.length;
+    var count = downloads.length - downloadIndex;
     el('downloads').className = 'panel' + (count ? '' : ' hidden');
     el('downloadSummary').textContent = count + (count === 1 ? ' file' : ' files') + ' remaining';
     el('downloadNext').textContent = 'Download next' + (count ? ' (' + count + ')' : '');
+    el('downloadZip').disabled = packingZip;
   }
 
   function downloadNext() {
-    var file = downloads.shift();
+    var file = downloads[downloadIndex];
     if (!file) return;
+    downloadIndex++;
     save(file.blob, file.filename);
     updateDownloadButton();
-    setStatus(file.filename + (downloads.length ? ' saved. ' + downloads.length + ' remaining.' : ' saved.'));
+    var remaining = downloads.length - downloadIndex;
+    setStatus(file.filename + (remaining ? ' saved. ' + remaining + ' remaining.' : ' saved.'));
+  }
+
+  /* ---------- ZIP (stored, no compression) ----------
+     JPG and PNG are already compressed, so deflate would buy almost nothing. */
+
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var i = 0; i < 256; i++) {
+      var c = i;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(buf) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function buildZip(files) {
+    var parts = [], central = [], offset = 0;
+    var now = new Date();
+    var time = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xFFFF;
+    var date = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xFFFF;
+    var enc = new TextEncoder();
+
+    files.forEach(function (f) {
+      var nameBytes = enc.encode(f.name);
+      var crc = crc32(f.bytes);
+      var size = f.bytes.length;
+
+      var local = new Uint8Array(30 + nameBytes.length);
+      var dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0x0800, true);
+      dv.setUint16(8, 0, true);
+      dv.setUint16(10, time, true);
+      dv.setUint16(12, date, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, size, true);
+      dv.setUint32(22, size, true);
+      dv.setUint16(26, nameBytes.length, true);
+      local.set(nameBytes, 30);
+      parts.push(local, f.bytes);
+
+      var cd = new Uint8Array(46 + nameBytes.length);
+      var cv = new DataView(cd.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, time, true);
+      cv.setUint16(14, date, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+
+      offset += local.length + size;
+    });
+
+    var centralSize = central.reduce(function (a, c) { return a + c.length; }, 0);
+    var end = new Uint8Array(22);
+    var ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+
+    return new Blob(parts.concat(central, [end]), { type: 'application/zip' });
+  }
+
+  async function downloadZip() {
+    if (!downloads.length || packingZip) return;
+    packingZip = true;
+    updateDownloadButton();
+    var batch = downloads.slice();
+    try {
+      var files = [];
+      for (var i = 0; i < batch.length; i++) {
+        files.push({
+          name: batch[i].filename,
+          bytes: new Uint8Array(await batch[i].blob.arrayBuffer())
+        });
+      }
+      save(buildZip(files), zipName);
+      setStatus(zipName + ' saved. Separate files are still available.');
+    } catch (err) {
+      setStatus(err && err.message ? err.message : 'Could not create ZIP.', true);
+    } finally {
+      packingZip = false;
+      updateDownloadButton();
+    }
   }
 
   async function decode(bytes) {
@@ -813,6 +921,7 @@
     if (busy || picking || !queued.length) return;
     busy = true;
     downloads = [];
+    downloadIndex = 0;
     updateDownloadButton();
     updateQueue();
 
@@ -840,6 +949,8 @@
         setStatus('No slices on those frames yet. Hit Slice first.', true);
         return;
       }
+
+      zipName = fileSafe(listing.frames.length > 1 ? prefixText() + 's' : listing.frames[0].name) + '.zip';
 
       var used = Object.create(null);
 
@@ -934,6 +1045,7 @@
   el('run').addEventListener('click', run);
   el('export').addEventListener('click', exportSlices);
   el('downloadNext').addEventListener('click', downloadNext);
+  el('downloadZip').addEventListener('click', downloadZip);
   el('clear').addEventListener('click', clearMarkers);
   el('pickToggle').addEventListener('click', function () {
     if (picking) stopPicking(); else startPicking();

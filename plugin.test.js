@@ -234,6 +234,7 @@ test('each Download next click saves exactly one prepared file', () => {
   const saved = [];
   const context = {
     downloads: [{ blob: 'one', filename: 'one.jpg' }, { blob: 'two', filename: 'two.jpg' }],
+    downloadIndex: 0,
     save(blob, filename) { saved.push({ blob, filename }); },
     updateDownloadButton() {},
     setStatus() {}
@@ -241,5 +242,58 @@ test('each Download next click saves exactly one prepared file', () => {
   vm.runInNewContext(`${match[0]}\ndownloadNext();`, context);
 
   assert.deepEqual(saved, [{ blob: 'one', filename: 'one.jpg' }]);
-  assert.equal(context.downloads.length, 1);
+  assert.equal(context.downloadIndex, 1);
+  assert.equal(context.downloads.length, 2);
+});
+
+test('Download all as ZIP keeps the separate files available', async () => {
+  const source = fs.readFileSync('ui.html', 'utf8');
+  const next = source.match(/  function downloadNext\(\) \{[\s\S]*?\n  \}/);
+  const zip = source.match(/  async function downloadZip\(\) \{[\s\S]*?\n  \}/);
+  assert.ok(next, 'downloadNext helper is missing');
+  assert.ok(zip, 'downloadZip helper is missing');
+  assert.match(source, /el\('downloadZip'\)\.addEventListener\('click', downloadZip\);/);
+
+  const saved = [];
+  const context = {
+    downloads: [
+      { blob: { async arrayBuffer() { return Uint8Array.of(1).buffer; } }, filename: 'one.jpg' },
+      { blob: { async arrayBuffer() { return Uint8Array.of(2).buffer; } }, filename: 'two.jpg' }
+    ],
+    downloadIndex: 0,
+    packingZip: false,
+    zipName: 'slices.zip',
+    buildZip(files) { return files.map((file) => file.name).join(','); },
+    save(blob, filename) { saved.push({ blob, filename }); },
+    updateDownloadButton() {},
+    setStatus() {}
+  };
+  vm.runInNewContext(next[0] + '\n' + zip[0], context);
+  context.downloadNext();
+  await context.downloadZip();
+
+  assert.deepEqual(saved, [
+    { blob: context.downloads[0].blob, filename: 'one.jpg' },
+    { blob: 'one.jpg,two.jpg', filename: 'slices.zip' }
+  ]);
+  assert.equal(context.downloads.length, 2);
+});
+
+test('ZIP failures are reported and the ZIP button recovers', async () => {
+  const source = fs.readFileSync('ui.html', 'utf8');
+  const match = source.match(/  async function downloadZip\(\) \{[\s\S]*?\n  \}/);
+  const statuses = [];
+  const context = {
+    downloads: [{ blob: { async arrayBuffer() { throw new Error('Broken image'); } }, filename: 'one.jpg' }],
+    packingZip: false,
+    zipName: 'slices.zip',
+    updateDownloadButton() {},
+    setStatus(message, bad) { statuses.push({ message, bad }); }
+  };
+  vm.runInNewContext(match[0], context);
+
+  await context.downloadZip();
+
+  assert.deepEqual(statuses, [{ message: 'Broken image', bad: true }]);
+  assert.equal(context.packingZip, false);
 });

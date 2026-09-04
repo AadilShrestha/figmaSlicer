@@ -90,7 +90,7 @@ Within a null-origin Figma plugin iframe there is no documented standards-based 
 
 ## Product recommendation
 
-For 2–3 slices, prepare all files, then show a **Download next** action that consumes one file per click. Add ZIP back only if large export queues make repeated clicks impractical. Include one short hint: “Turn off ‘Ask where to save each file’ to send each clicked file straight to Downloads.” Do not claim that turning it off enables multi-downloads, and do not require users to grant Automatic downloads for `figma.com`.
+For 2–3 slices, prepare all files, then show a **Download next** action that consumes one file per click. Keep ZIP as a parallel bulk option without consuming the separate-file queue. Include one short hint: “Turn off ‘Ask where to save each file’ to send each clicked file straight to Downloads.” Do not claim that turning it off enables multi-downloads, and do not require users to grant Automatic downloads for `figma.com`.
 
 ## Verification matrix
 
@@ -100,4 +100,4 @@ Run this in Figma web on both Chrome and Edge:
 2. Automatic downloads = Block; repeat. Record whether file 2/3 are blocked, then restore Ask/default.
 3. Automatic downloads = Allow for `figma.com`; use one bulk action that scripts 3 downloads. Record whether the null-origin iframe is covered; this result is browser/host evidence, not an API guarantee.
 4. Call `showDirectoryPicker()` from a direct click only as a diagnostic. Expect `SecurityError` in the default null-origin iframe.
-5. If a ZIP option is later restored, confirm it produces one download containing all slices.
+5. Confirm the ZIP option produces one download containing all slices while leaving the separate files available.
